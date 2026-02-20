@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Out of Stock Manual</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #11121a;
+        color: #cbd5e1;
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* ─── SIDEBAR ─── */
+      #sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #15161f;
+        border-right: 1px solid #1f2133;
+        display: flex;
+        flex-direction: column;
+        transition: width 0.3s ease;
+        flex-shrink: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        overflow: hidden;
+        z-index: 100;
+      }
+
+      #sidebar.collapsed {
+        width: 64px;
+      }
+
+      #sidebar ul {
+        list-style: none;
+        padding: 0;
+        width: 240px;
+      }
+
+      #sidebar ul li:first-child {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 16px 18px 20px;
+        border-bottom: 1px solid #1f2133;
+        min-height: 64px;
+      }
+
+      .logo {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        white-space: nowrap;
+        opacity: 1;
+        transition: opacity 0.2s;
+      }
+
+      #sidebar.collapsed .logo {
+        opacity: 0;
+      }
+
+      #toggle-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      }
+
+      #toggle-btn:hover {
+        background: #1f2133;
+      }
+      #sidebar.collapsed #toggle-btn svg {
+        transform: rotate(180deg);
+      }
+      #toggle-btn svg {
+        transition: transform 0.3s ease;
+      }
+
+      #sidebar ul li a {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 11px 20px;
+        color: #8892a4;
+        text-decoration: none;
+        white-space: nowrap;
+        transition:
+          background 0.2s,
+          color 0.2s;
+        border-left: 3px solid transparent;
+      }
+
+      #sidebar ul li a:hover {
+        background: #1a1c27;
+        color: #e2e8f0;
+      }
+
+      #sidebar ul li.active a {
+        background: #1a1c27;
+        color: #60a5fa;
+        border-left-color: #3b6ef6;
+      }
+
+      #sidebar ul li.active a svg {
+        fill: #60a5fa !important;
+      }
+
+      #sidebar ul li a span {
+        font-size: 0.88rem;
+        font-weight: 500;
+        opacity: 1;
+        transition: opacity 0.2s;
+      }
+
+      #sidebar.collapsed ul li a span {
+        opacity: 0;
+      }
+      #sidebar ul li a svg {
+        flex-shrink: 0;
+      }
+
+      /* ─── MAIN ─── */
+      #main {
+        margin-left: 240px;
+        flex: 1;
+        padding: 40px 32px;
+        transition: margin-left 0.3s ease;
+      }
+
+      body.sidebar-collapsed #main {
+        margin-left: 64px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: #f1f5f9;
+        letter-spacing: 0.02em;
+      }
+
+      /* ─── ACCORDION ─── */
+      .accordion {
+        max-width: 860px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .item {
+        background: #1a1c27;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+        border: 1px solid #2a2d3e;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 22px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+      }
+
+      .header:hover {
+        background: #1f2133;
+      }
+
+      .step-badge {
+        min-width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #3b6ef6;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 0 10px rgba(59, 110, 246, 0.4);
+      }
+
+      .header-text {
+        font-weight: 600;
+        font-size: 1rem;
+        flex: 1;
+        line-height: 1.4;
+        color: #e2e8f0;
+      }
+
+      .chevron {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        transition: transform 0.3s ease;
+        color: #4a5070;
+      }
+
+      .item.open .chevron {
+        transform: rotate(180deg);
+        color: #3b6ef6;
+      }
+      .item.open .step-badge {
+        background: #2558e8;
+        box-shadow: 0 0 14px rgba(37, 88, 232, 0.5);
+      }
+      .item.open {
+        border-color: #2e3a5e;
+      }
+
+      .body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease;
+      }
+
+      .body-inner {
+        padding: 12px 22px 20px 68px;
+        font-size: 0.92rem;
+        line-height: 1.75;
+        color: #94a3b8;
+        border-top: 1px solid #1f2133;
+      }
+
+      .body-inner ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .body-inner ul li {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 8px;
+      }
+
+      .body-inner ul li::before {
+        content: "b7";
+        content: "\00B7";
+        content: "•";
+        position: absolute;
+        left: 0;
+        color: #3b6ef6;
+        font-weight: 700;
+      }
+
+      .body-inner ul ul {
+        margin-top: 8px;
+      }
+      .body-inner ul ul li::before {
+        content: "◦";
+        color: #3a3f5c;
+      }
+
+      .tag {
+        display: inline-block;
+        background: #1a2340;
+        color: #60a5fa;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin: 0 2px;
+        border: 1px solid #2a3f6e;
+      }
+
+      .person {
+        color: #a78bfa;
+        font-weight: 600;
+      }
+
+      .note {
+        background: #1e1a0e;
+        border-left: 3px solid #f59e0b;
+        padding: 8px 12px;
+        border-radius: 0 8px 8px 0;
+        margin-top: 10px;
+        font-size: 0.88rem;
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+      <ul>
+        <li>
+          <span class="logo">OilTeamOnePage</span>
+          <button onclick="toggleSidebar()" id="toggle-btn">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M440-240 200-480l240-240 56 56-183 184 183 184-56 56Zm264 0L464-480l240-240 56 56-183 184 183 184-56 56Z"
+              />
+            </svg>
+          </button>
+        </li>
+        <li>
+          <a href="index.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z"
+              />
+            </svg>
+            <span>Home</span>
+          </a>
+        </li>
+        <li>
+          <a href="factories.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M80-80v-481l280-119v80l200-80v120h320v480H80Zm80-80h640v-320H480v-82l-200 80v-78l-120 53v347Zm280-80h80v-160h-80v160Zm-160 0h80v-160h-80v160Zm320 0h80v-160h-80v160Zm280-320H680l40-320h120l40 320ZM160-160h640-640Z"
+              />
+            </svg>
+            <span>Factories</span>
+          </a>
+        </li>
+        <li>
+          <a href="suppliers.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M80-120v-650l200-150 200 150v90h400v560H80Zm80-80h80v-80h-80v80Zm0-160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm160 0h80v-80h-80v80Zm0 480h480v-400H320v400Zm240-240v-80h160v80H560Zm0 160v-80h160v80H560ZM400-440v-80h80v80h-80Zm0 160v-80h80v80h-80Z"
+              />
+            </svg>
+            <span>Suppliers</span>
+          </a>
+        </li>
+        <li>
+          <a href="vendors.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M80-200v-120h240v-100H80v-120h240v-100H80v-120h240q50 0 85 35t35 85v76q0 35-24.5 59.5T356-480q35 0 59.5 24.5T440-396v76q0 50-35 85t-85 35H80Zm520-120h160v-320H600v320Zm0 120q-50 0-85-35t-35-85v-320q0-50 35-85t85-35h160q50 0 85 35t35 85v320q0 50-35 85t-85 35H600Z"
+              />
+            </svg>
+            <span>Vendors</span>
+          </a>
+        </li>
+        <li>
+          <a href="sap.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M300-720q-25 0-42.5 17.5T240-660q0 25 17.5 42.5T300-600q25 0 42.5-17.5T360-660q0-25-17.5-42.5T300-720Zm0 400q-25 0-42.5 17.5T240-260q0 25 17.5 42.5T300-200q25 0 42.5-17.5T360-260q0-25-17.5-42.5T300-320ZM160-840h640q17 0 28.5 11.5T840-800v280q0 17-11.5 28.5T800-480H160q-17 0-28.5-11.5T120-520v-280q0-17 11.5-28.5T160-840Zm40 80v200h560v-200H200Zm-40 320h640q17 0 28.5 11.5T840-400v280q0 17-11.5 28.5T800-80H160q-17 0-28.5-11.5T120-120v-280q0-17 11.5-28.5T160-440Zm40 80v200h560v-200H200Zm0-400v200-200Zm0 400v200-200Z"
+              />
+            </svg>
+            <span>SAP</span>
+          </a>
+        </li>
+        <li>
+          <a href="links.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M440-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h160v80H280q-50 0-85 35t-35 85q0 50 35 85t85 35h160v80ZM320-440v-80h320v80H320Zm200 160v-80h160q50 0 85-35t35-85q0-50-35-85t-85-35H520v-80h160q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H520Z"
+              />
+            </svg>
+            <span>Links</span>
+          </a>
+        </li>
+        <li>
+          <a href="deadlines.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z"
+              />
+            </svg>
+            <span>Deadlines</span>
+          </a>
+        </li>
+        <li>
+          <a href="oils.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M160-120q-17 0-28.5-11.5T120-160q0-17 11.5-28.5T160-200h40v-240h-40q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520h40v-240h-40q-17 0-28.5-11.5T120-800q0-17 11.5-28.5T160-840h640q17 0 28.5 11.5T840-800q0 17-11.5 28.5T800-760h-40v240h40q17 0 28.5 11.5T840-480q0 17-11.5 28.5T800-440h-40v240h40q17 0 28.5 11.5T840-160q0 17-11.5 28.5T800-120H160Zm120-80h400v-240q-17 0-28.5-11.5T640-480q0-17 11.5-28.5T680-520v-240H280v240q17 0 28.5 11.5T320-480q0 17-11.5 28.5T280-440v240Zm200-120q50 0 85-34.5t35-83.5q0-39-22.5-67T480-620q-75 86-97.5 114.5T360-438q0 49 35 83.5t85 34.5ZM280-200v-560 560Z"
+              />
+            </svg>
+            <span>Oils</span>
+          </a>
+        </li>
+        <li>
+          <a href="coopackers.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M440-183v-274L200-596v274l240 139Zm80 0 240-139v-274L520-457v274Zm-80 92L160-252q-19-11-29.5-29T120-321v-318q0-22 10.5-40t29.5-29l280-161q19-11 40-11t40 11l280 161q19 11 29.5 29t10.5 40v318q0 22-10.5 40T800-252L520-91q-19 11-40 11t-40-11Zm200-528 77-44-237-137-78 45 238 136Zm-160 93 78-45-237-137-78 45 237 137Z"
+              />
+            </svg>
+            <span>Coopackers (3PM)</span>
+          </a>
+        </li>
+        <li>
+          <a href="qa.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M240-40v-329L110-580l185-300h370l185 300-130 211v329l-240-80-240 80Zm80-111 160-53 160 53v-129H320v129Zm20-649L204-580l136 220h280l136-220-136-220H340Zm98 383L296-558l57-57 85 85 169-170 57 56-226 227ZM320-280h320-320Z"
+              />
+            </svg>
+            <span>QA &amp; SRC</span>
+          </a>
+        </li>
+        <li class="active">
+          <a href="procedura.html">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#e8eaed"
+            >
+              <path
+                d="M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"
+              />
+            </svg>
+            <span>Out of Stock Manual</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div id="main">
+      <h1>🛢️ Procedura na wypadek Out Of Stock</h1>
+
+      <div class="accordion">
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">1</div>
+            <div class="header-text">
+              Sprawdzenie dostępności innych kontraktów dla naszej fabryki
+            </div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <ul>
+                <li>
+                  Dostępność oleju na kontraktach sprawdzamy w SAP, w transakcji
+                  <span class="tag">ME3M</span>.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">2</div>
+            <div class="header-text">
+              Podmiana slotów wewnątrz zespołu u danego dostawcy z inną fabryką
+            </div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              Sprawdzamy wewnątrz zespołu, czy możemy podmienić się slotami u
+              danego dostawcy z inną fabryką.
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">3</div>
+            <div class="header-text">
+              Przekierowanie auta z innej fabryki (STO)
+            </div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <ul>
+                <li>
+                  Weryfikujemy restrykcje QA: poszczególne fabryki mogą różnić
+                  się wymogami jakościowymi (koszerność, wymagane programy mycia
+                  cysterny, etc.).
+                </li>
+                <li>
+                  Weryfikujemy, czy załadowca jest certyfikowany przez fabrykę
+                  docelową.
+                </li>
+                <li>
+                  Sprawdzamy wymogi techniczne na rozładunku (węże, kompresory,
+                  ground operated, etc.).
+                </li>
+                <li>
+                  Przekierowanie zawsze robimy na podstawie STO w transakcji
+                  <span class="tag">ME21N</span>:
+                  <ul>
+                    <li>
+                      Fabryka wydająca olej musi zrobić GR na oryginalnym PO.
+                    </li>
+                    <li>Po stworzeniu GR planista tworzy STO.</li>
+                    <li>
+                      Planista tworzy DN (transakcja
+                      <span class="tag">VL10B</span>).
+                    </li>
+                    <li>
+                      Planista prosi osobę kontaktową z fabryki o stworzenie GI
+                      dla danego STO.
+                    </li>
+                    <li>
+                      Fabryka przyjmująca przekierowane auto robi GR na STO.
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+              <div class="note">
+                ⚠️ <strong>Dotyczy tylko Katowic:</strong> zawsze informować
+                zespół SENT EKAER o wszelkich przekierowaniach do lub z Katowic.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">4</div>
+            <div class="header-text">
+              Blend Flex / Koncesja – przepięcie receptur na inny olej
+            </div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <p style="margin-bottom: 10px">
+                Zmienia zawartość procentową komponentu w wyrobie gotowym oraz
+                wpływa na zmianę konsumpcji oleju (zmniejsza użycie oleju A na
+                rzecz oleju B).
+              </p>
+              <ul>
+                <li>
+                  Zawsze najpierw konsultujemy z
+                  <span class="person">Natalią Czarnecką</span> (Oil Mid-term
+                  Planning) – czy jest to możliwe i jaki jest impakt na
+                  dostępność olejów.
+                </li>
+                <li>
+                  Zaangażowane role w koncesji:
+                  <ul>
+                    <li>
+                      <strong>MET</strong> – techniczne procesowe użycie
+                      materiałów: <span class="person">Anna Gradkowska</span>.
+                    </li>
+                    <li>
+                      <strong>Centralna Jakość</strong> – zgoda dla danego kraju
+                      (<span class="person">Monika Drabek</span> + klaster):
+                      <ul>
+                        <li>
+                          Manager: <span class="person">Claudio Claps</span>
+                        </li>
+                        <li>
+                          DE/AT/CH – <span class="person">Pablo Torres</span>
+                        </li>
+                        <li>
+                          PL/CZ/SK/HU – <span class="person">Piotr Dusza</span>
+                        </li>
+                        <li>GR – <span class="person">Dimitra Gioti</span></li>
+                        <li>
+                          NL/BE/FR/ES/PT –
+                          <span class="person">Inga Helmons</span>
+                        </li>
+                        <li>
+                          UK/SE/DK/FI/BAL –
+                          <span class="person">Sohaib Bouzeghoub</span>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  Po uzyskaniu wszystkich zgód – wysyłamy request do T&amp;I o
+                  zmianę receptur.
+                </li>
+                <li>
+                  <strong>Blend Flex Pratau:</strong> jeśli mamy zgodę Natalii,
+                  informujemy <span class="person">Manuela Piper</span> – ona
+                  organizuje całość.
+                </li>
+                <li>
+                  <strong>Blend Flex Katowice:</strong>
+                  <ul>
+                    <li>
+                      <span class="tag">CS15</span>: Blendflex for Katowice
+                      (8865991 / DIRECT MULTILEVEL) – szczegóły na stronie
+                      Dawida Janika.
+                    </li>
+                    <li>
+                      <span class="tag">ZM2D_MAT_USAGE</span>: Checking oil
+                      usage for specific SKU – szczegóły na stronie Dawida
+                      Janika.
+                    </li>
+                    <li>
+                      Wykonujemy eksporty z obu transakcji → matchujemy dane →
+                      kompresujemy z danymi fabrycznymi (pliki
+                      <span class="person">Arkadiusza Naguszewskiego</span> i
+                      <span class="person">Radka Ceglarka</span>) → gotowa lista
+                      dla T&amp;I. Zawsze dodajemy Jakość w kopii maila.
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">5</div>
+            <div class="header-text">
+              Opóźnienie produkcji dla konkretnych FG
+            </div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <ul>
+                <li>
+                  Sprawdzamy z planistami fabrycznymi możliwości opóźnienia
+                  danych produkcji, używając transakcji
+                  <span class="tag">MD04</span> oraz
+                  <span class="tag">ZM2D_MAT_USAGE</span>.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">6</div>
+            <div class="header-text">Przyspieszenie istniejącego kontraktu</div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <ul>
+                <li>
+                  Jeśli wszystkie powyższe rozwiązania zawiodły – sprawdzamy z
+                  <span class="person">Natalią Czarnecką</span>, czy możemy
+                  przyspieszyć jakiś istniejący kontrakt.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="header" onclick="toggle(this)">
+            <div class="step-badge">7</div>
+            <div class="header-text">Zakup oleju na spocie (ostateczność)</div>
+            <svg
+              class="chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+          <div class="body">
+            <div class="body-inner">
+              <ul>
+                <li>
+                  Jeśli nadal żadne z powyższych rozwiązań nie jest możliwe –
+                  sprawdzamy z Mid-term Planningiem i managerem możliwości
+                  zakupu oleju na spocie.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function toggleSidebar() {
+        document.getElementById("sidebar").classList.toggle("collapsed");
+        document.body.classList.toggle("sidebar-collapsed");
+      }
+
+      function toggle(header) {
+        const item = header.parentElement;
+        const body = item.querySelector(".body");
+        const isOpen = item.classList.contains("open");
+
+        document.querySelectorAll(".item.open").forEach((i) => {
+          i.classList.remove("open");
+          i.querySelector(".body").style.maxHeight = "0";
+        });
+
+        if (!isOpen) {
+          item.classList.add("open");
+          body.style.maxHeight = body.scrollHeight + "px";
+        }
+      }
+    </script>
+  </body>
+</html>
